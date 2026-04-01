@@ -1,0 +1,20 @@
+# Dépendances installées par npm, volumineuses et régénérables
+node_modules/
+
+# Variables d'environnement sensibles (secrets, tokens, mots de passe)
+.env
+
+# Fichiers de build/production générés automatiquement
+dist/
+
+# Fichier système macOS, inutile au projet
+.DS_Store
+
+# Fichiers de logs générés à l'exécution
+*.log
+
+# Rapports de couverture de tests, régénérables
+coverage/
+
+# Variables d'environnement Docker, contient potentiellement des secrets
+.docker-env
