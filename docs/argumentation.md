@@ -121,3 +121,34 @@
 **Ingress** : Choisi plutôt que NodePort ou LoadBalancer car il permet un routage HTTP avancé basé sur les paths (/api → backend, / → frontend) avec un seul point d'entrée. NodePort exposerait des ports arbitraires, et LoadBalancer créerait un load balancer cloud par service (coûteux).
 
 **Secret Kubernetes** : Stocke le mot de passe de la base de données de manière chiffrée dans le cluster. Le secret est injecté comme variable d'environnement dans le pod via `env.valueFrom.secretKeyRef`, évitant de mettre des credentials en dur dans les manifestes de déploiement.
+
+### Exercice 9 — Réflexion sur la supervision
+
+**Stack de supervision recommandée** :
+
+1. **Prometheus** (Collecte de métriques) : Scrape les métriques exposées par les applications et l'infrastructure Kubernetes via des endpoints /metrics. Stocke les données en time-series. Choisi car c'est le standard de facto pour Kubernetes, nativement intégré via kube-state-metrics et node-exporter.
+
+2. **Grafana** (Visualisation & Dashboards) : Affiche les métriques Prometheus sous forme de graphiques et tableaux de bord interactifs. Permet de créer des dashboards personnalisés pour chaque service (latence API, usage CPU/mémoire, taux d'erreur).
+
+3. **Alertmanager** (Alerting) : Composant de Prometheus qui gère les alertes. Envoie des notifications (Slack, email, PagerDuty) quand des seuils sont dépassés (ex: taux d'erreur 5xx > 5%, CPU > 80%).
+
+4. **Loki + Promtail** (Logs centralisés) : Loki agrège les logs de tous les pods, Promtail les collecte. Alternative plus légère à la stack ELK (Elasticsearch/Logstash/Kibana) et mieux intégrée à Grafana.
+
+**Métriques surveillées** :
+- **CPU et Mémoire** : Détectent les fuites mémoire et la surcharge, permettent le dimensionnement (HPA)
+- **Latence API** (p50, p95, p99) : Mesure l'expérience utilisateur, détecte les dégradations de performance
+- **Taux d'erreur HTTP 5xx** : Indicateur direct de problèmes applicatifs
+- **Nombre de requêtes par seconde** : Surveille la charge et détecte les pics de trafic
+- **Disponibilité des pods** (ready vs total) : Vérifie que le nombre de réplicas attendu est maintenu
+- **Temps de réponse de la base de données** : Détecte les problèmes de performance PostgreSQL
+- **Espace disque des volumes** : Prévient la saturation du stockage PostgreSQL
+
+**Self-healing Kubernetes** :
+Quand un pod tombe (crash, OOM Kill, liveness probe en échec), voici le mécanisme :
+1. Le **kubelet** (agent sur le nœud) détecte la défaillance via la liveness probe ou le crash du processus
+2. Le **ReplicaSet** (géré par le Deployment) constate que le nombre de pods actifs (1) est inférieur au nombre désiré (2)
+3. Le ReplicaSet demande au **scheduler** de créer un nouveau pod pour rétablir l'état désiré
+4. Le scheduler place le pod sur un nœud disponible, et le nouveau pod démarre automatiquement
+5. Une fois la **readiness probe** réussie, le pod est ajouté au Service et reçoit du trafic
+
+Ce processus est entièrement automatique et ne nécessite aucune intervention humaine. C'est le principe de la **réconciliation déclarative** : Kubernetes compare en permanence l'état actuel à l'état désiré et agit pour les aligner.
