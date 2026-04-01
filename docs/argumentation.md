@@ -103,3 +103,21 @@
 2. **Fuites dans les logs CI** : Les fichiers de pipeline sont affichés dans les logs d'exécution. Un secret en clair apparaîtrait dans les logs accessibles à tous les collaborateurs.
 3. **Propagation incontrôlée** : Si le dépôt est forké ou rendu public accidentellement, tous les secrets sont immédiatement compromis.
 4. **Non-révocabilité** : Contrairement à un secret dans un vault, un secret dans Git ne peut pas être révoqué facilement — il faut réécrire l'historique.
+
+## Partie 4 — Orchestration et supervision
+
+### Exercice 8 — Manifestes Kubernetes
+
+**Deployment** : Un Deployment gère le cycle de vie des pods. Il garantit qu'un nombre défini de réplicas est toujours en fonctionnement et permet des mises à jour rolling (sans downtime).
+
+**2 réplicas** : Un seul réplica crée un point unique de défaillance (SPOF) — si le pod tombe, l'application est indisponible. Deux réplicas garantissent la haute disponibilité : si un pod tombe, l'autre continue de servir les requêtes pendant que Kubernetes recrée le pod défaillant. Trois réplicas n'est pas nécessaire pour une application de cette taille, mais serait recommandé en production critique pour supporter la charge et les mises à jour rolling.
+
+**Liveness Probe** : Vérifie périodiquement que le conteneur est vivant en appelant GET /health. Si la probe échoue 3 fois consécutives (failureThreshold), Kubernetes redémarre automatiquement le pod. Cela détecte les situations où l'application est bloquée (deadlock, mémoire saturée) mais le processus tourne encore.
+
+**Readiness Probe** : Vérifie que le pod est prêt à recevoir du trafic. Un pod non-ready est retiré du Service et ne reçoit plus de requêtes, évitant d'envoyer du trafic à un pod qui démarre ou qui a des problèmes.
+
+**Service ClusterIP** : Expose le backend uniquement à l'intérieur du cluster Kubernetes. C'est le type par défaut et le plus sécurisé : le backend n'est pas directement accessible depuis l'extérieur, seul l'Ingress peut router le trafic vers lui.
+
+**Ingress** : Choisi plutôt que NodePort ou LoadBalancer car il permet un routage HTTP avancé basé sur les paths (/api → backend, / → frontend) avec un seul point d'entrée. NodePort exposerait des ports arbitraires, et LoadBalancer créerait un load balancer cloud par service (coûteux).
+
+**Secret Kubernetes** : Stocke le mot de passe de la base de données de manière chiffrée dans le cluster. Le secret est injecté comme variable d'environnement dans le pod via `env.valueFrom.secretKeyRef`, évitant de mettre des credentials en dur dans les manifestes de déploiement.

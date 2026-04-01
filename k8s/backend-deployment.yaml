@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vitalsync-backend
+  labels:
+    app: vitalsync-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: vitalsync-backend
+  template:
+    metadata:
+      labels:
+        app: vitalsync-backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/MON_USER/vitalsync-api:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: vitalsync-db-secret
+                  key: database-url
+            - name: NODE_ENV
+              value: "production"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
