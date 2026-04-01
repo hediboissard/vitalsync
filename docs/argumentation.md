@@ -87,3 +87,19 @@
 **Étape 3 — Déploiement staging** : Lance docker-compose en mode staging, attend que les services démarrent, puis exécute un health check HTTP sur /health. Si le health check retourne autre chose que 200, la pipeline échoue avec les logs du backend pour debug. Cela garantit qu'aucun déploiement cassé ne passe inaperçu.
 
 **Health check** : Utilise curl pour vérifier que l'API répond correctement. Si la réponse n'est pas HTTP 200, la pipeline échoue. C'est un smoke test minimal mais essentiel qui vérifie que l'application démarre et que la route principale fonctionne.
+
+### Exercice 7 — Gestion des secrets et déclencheurs
+
+**Secrets configurés dans GitHub** :
+- `GITHUB_TOKEN` (automatique) : Token d'authentification pour pousser des images sur GHCR. Fourni automatiquement par GitHub Actions, pas besoin de le configurer manuellement.
+- `STAGING_DB_PASSWORD` : Mot de passe de la base de données pour l'environnement staging. Stocké dans les secrets GitHub pour ne jamais apparaître en clair dans les logs ou le code.
+
+**Déclencheurs de la pipeline** :
+- `push sur develop` : Chaque push sur develop déclenche la pipeline complète. Cela permet de valider en continu le code intégré par les développeurs et de détecter les régressions rapidement.
+- `pull_request vers main` : Chaque PR vers main déclenche la pipeline. Cela garantit que le code qui arrive en production a été validé (tests, lint, build, health check) avant le merge.
+
+**Pourquoi ne jamais stocker de secrets en clair dans un fichier CI** :
+1. **Exposition dans l'historique Git** : Un secret commité est visible dans tout l'historique Git, même après suppression. Toute personne ayant accès au dépôt (ou à un fork) peut le récupérer.
+2. **Fuites dans les logs CI** : Les fichiers de pipeline sont affichés dans les logs d'exécution. Un secret en clair apparaîtrait dans les logs accessibles à tous les collaborateurs.
+3. **Propagation incontrôlée** : Si le dépôt est forké ou rendu public accidentellement, tous les secrets sont immédiatement compromis.
+4. **Non-révocabilité** : Contrairement à un secret dans un vault, un secret dans Git ne peut pas être révoqué facilement — il faut réécrire l'historique.
